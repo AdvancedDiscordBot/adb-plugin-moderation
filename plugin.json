@@ -1,0 +1,29 @@
+{
+  "name": "adb-plugin-moderation",
+  "displayName": "Basic Moderation",
+  "version": "1.0.0",
+  "description": "Core moderation commands: ban, kick, timeout, warn, purge, tickets, and case logging.",
+  "author": "dead",
+  "main": "index.js",
+  "requiresRestart": true,
+  "permissions": ["db.read", "db.write", "commands.register"],
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "log_channel_id": { "type": "string", "default": null },
+      "ticket_category_id": { "type": "string", "default": null },
+      "ticket_support_role_id": { "type": "string", "default": null },
+      "ticket_log_channel_id": { "type": "string", "default": null },
+      "warn_thresholds": {
+        "type": "object",
+        "default": {
+          "3": { "action": "timeout", "duration": "1h" },
+          "5": { "action": "timeout", "duration": "24h" },
+          "7": { "action": "kick" },
+          "10": { "action": "ban" }
+        }
+      },
+      "dm_on_action": { "type": "boolean", "default": true }
+    }
+  }
+}
