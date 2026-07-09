@@ -7,6 +7,7 @@
   "main": "index.js",
   "requiresRestart": true,
   "permissions": ["db.read", "db.write", "commands.register"],
+  "discordPermissions": ["BanMembers", "KickMembers", "ModerateMembers", "ManageMessages", "ManageChannels"],
   "configSchema": {
     "type": "object",
     "properties": {
