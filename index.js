@@ -34,14 +34,15 @@ async function load(ctx) {
   const NoteModel = ctx.defineModel("Note", NoteSchema);
   const TicketModel = ctx.defineModel("Ticket", TicketSchema);
 
-  // Attach models to ctx so commands can access them via ctx.models
-  ctx.models = { Case: CaseModel, Note: NoteModel, Ticket: TicketModel };
+  // ctx is frozen by the core loader — build a local extension carrying the
+  // models instead of mutating it. Commands read pctx.models.*
+  const pctx = { ...ctx, models: { Case: CaseModel, Note: NoteModel, Ticket: TicketModel } };
 
   // Register all slash commands
   for (const cmd of commands) {
     ctx.registerCommand({
       data: cmd.data,
-      execute: (interaction) => cmd.execute(interaction, ctx),
+      execute: (interaction) => cmd.execute(interaction, pctx),
     });
   }
 

@@ -184,9 +184,19 @@ function buildInteraction(overrides = {}) {
 }
 
 function createMockCtx() {
-  const models = {};
+  // Inspection collectors — populated by ctx methods, read by the harness.
+  // Prefixed `_` and created up-front so they survive the shallow Object.freeze
+  // below (freeze blocks reassigning/adding props, but pushing into an existing
+  // array / writing into a nested object is still allowed).
+  const _models = {};
+  const _commands = [];
+  const _events = [];
 
   const ctx = {
+    _models,
+    _commands,
+    _events,
+
     client: {
       user: { id: "bot-id", tag: "Bot#0000" },
       users: {
@@ -201,22 +211,18 @@ function createMockCtx() {
       },
     },
 
-    models,
-
     defineModel(name, schema) {
       const model = createInMemoryModel(name, schema);
-      models[name] = model;
+      _models[name] = model;
       return model;
     },
 
     registerCommand(cmd) {
-      if (!ctx._commands) ctx._commands = [];
-      ctx._commands.push(cmd);
+      _commands.push(cmd);
     },
 
     registerEvent(eventName, handler) {
-      if (!ctx._events) ctx._events = [];
-      ctx._events.push({ eventName, handler });
+      _events.push({ eventName, handler });
     },
 
     db: {
@@ -267,7 +273,9 @@ function createMockCtx() {
     },
   };
 
-  return ctx;
+  // Core (PluginContext.build) freezes the ctx it hands plugins. Mirror that so
+  // the harness catches any plugin that tries to mutate ctx (e.g. `ctx.models = …`).
+  return Object.freeze(ctx);
 }
 
 module.exports = { createMockCtx, buildInteraction, buildOptions };

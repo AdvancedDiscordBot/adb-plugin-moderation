@@ -69,12 +69,13 @@ async function run() {
   assert(parseDuration(null) === null, "parseDuration(null) === null");
 
   // -------------------------------------------------------
-  // 4. Models defined
+  // 4. Models defined (inspected via mock collector; the plugin itself
+  //    carries them on its own local ctx, not the frozen core ctx)
   // -------------------------------------------------------
   console.log("\n-- models --");
-  assert(typeof ctx.models.Case === "function", "Case model defined");
-  assert(typeof ctx.models.Note === "function", "Note model defined");
-  assert(typeof ctx.models.Ticket === "function", "Ticket model defined");
+  assert(typeof ctx._models.Case === "function", "Case model defined");
+  assert(typeof ctx._models.Note === "function", "Note model defined");
+  assert(typeof ctx._models.Ticket === "function", "Ticket model defined");
 
   // -------------------------------------------------------
   // 5. Hooks registered
