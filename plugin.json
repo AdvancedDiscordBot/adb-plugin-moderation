@@ -1,65 +1,76 @@
 {
-  "name": "adb-plugin-moderation",
-  "displayName": "Basic Moderation",
-  "version": "1.0.0",
-  "description": "Core moderation commands: ban, kick, timeout, warn, purge, tickets, and case logging.",
-  "author": "DeadIndian",
-  "main": "index.js",
-  "requiresRestart": true,
-  "permissions": [
-    "db.read",
-    "db.write",
-    "commands.register"
-  ],
-  "discordPermissions": [
-    "BanMembers",
-    "KickMembers",
-    "ModerateMembers",
-    "ManageMessages",
-    "ManageChannels"
-  ],
-  "configSchema": {
-    "type": "object",
-    "properties": {
-      "log_channel_id": {
-        "type": "string",
-        "default": null
-      },
-      "ticket_category_id": {
-        "type": "string",
-        "default": null
-      },
-      "ticket_support_role_id": {
-        "type": "string",
-        "default": null
-      },
-      "ticket_log_channel_id": {
-        "type": "string",
-        "default": null
-      },
-      "warn_thresholds": {
-        "type": "object",
-        "default": {
-          "3": {
-            "action": "timeout",
-            "duration": "1h"
-          },
-          "5": {
-            "action": "timeout",
-            "duration": "24h"
-          },
-          "7": {
-            "action": "kick"
-          },
-          "10": {
-            "action": "ban"
-          }
-        }
-      },
-      "dm_on_action": {
-        "type": "boolean",
-        "default": true
-      }
-    }
-  }
+	"name": "adb-plugin-moderation",
+	"displayName": "Basic Moderation",
+	"version": "1.1.0",
+	"description": "Core moderation commands: ban, kick, timeout, warn, purge, tickets, and case logging.",
+	"author": "DeadIndian",
+	"main": "index.js",
+	"requiresRestart": true,
+	"isolation": false,
+	"manifestVersion": 2,
+	"process": {
+		"model": "persistent",
+		"maxExecutionMs": 15000,
+		"memoryMb": 256,
+		"persistentReason": "Runs un-isolated (system:raw-client) for bulk message purge, channel lock/slowmode, ticket channel creation, and live guild/member lookups — direct discord.js operations the sandboxed RPC surface cannot express."
+	},
+	"capabilities": {
+		"system": ["raw-client"],
+		"storage": ["own-collection"],
+		"discord": [
+			"BanMembers",
+			"KickMembers",
+			"ModerateMembers",
+			"ManageMessages",
+			"ManageChannels",
+			"SendMessages",
+			"GuildInfo"
+		],
+		"hooks": ["subscribe"]
+	},
+	"permissions": {
+		"system": ["raw-client"],
+		"storage": ["own-collection"],
+		"discord": [
+			"BanMembers",
+			"KickMembers",
+			"ModerateMembers",
+			"ManageMessages",
+			"ManageChannels",
+			"SendMessages",
+			"GuildInfo"
+		],
+		"hooks": ["subscribe"],
+		"network": { "outbound": [] },
+		"filesystem": { "read": [], "write": [] },
+		"childProcess": false,
+		"nativeAddons": false
+	},
+	"declaredDependencies": [],
+	"discordPermissions": [
+		"BanMembers",
+		"KickMembers",
+		"ModerateMembers",
+		"ManageMessages",
+		"ManageChannels"
+	],
+	"configSchema": {
+		"type": "object",
+		"properties": {
+			"log_channel_id": { "type": "string", "default": null },
+			"ticket_category_id": { "type": "string", "default": null },
+			"ticket_support_role_id": { "type": "string", "default": null },
+			"ticket_log_channel_id": { "type": "string", "default": null },
+			"warn_thresholds": {
+				"type": "object",
+				"default": {
+					"3": { "action": "timeout", "duration": "1h" },
+					"5": { "action": "timeout", "duration": "24h" },
+					"7": { "action": "kick" },
+					"10": { "action": "ban" }
+				}
+			},
+			"dm_on_action": { "type": "boolean", "default": true }
+		}
+	}
 }
