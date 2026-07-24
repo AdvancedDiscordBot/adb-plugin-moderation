@@ -1,7 +1,7 @@
 {
 	"name": "adb-plugin-moderation",
 	"displayName": "Basic Moderation",
-	"version": "1.1.0",
+	"version": "1.2.0",
 	"description": "Core moderation commands: ban, kick, timeout, warn, purge, tickets, and case logging.",
 	"author": "DeadIndian",
 	"main": "index.js",
@@ -12,11 +12,15 @@
 		"model": "persistent",
 		"maxExecutionMs": 15000,
 		"memoryMb": 256,
-		"persistentReason": "Runs un-isolated (system:raw-client) for bulk message purge, channel lock/slowmode, ticket channel creation, and live guild/member lookups — direct discord.js operations the sandboxed RPC surface cannot express."
+		"persistentReason": "Runs un-isolated (system:raw-client) for bulk message purge, channel lock/slowmode, ticket channel creation, and live guild/member lookups \u2014 direct discord.js operations the sandboxed RPC surface cannot express."
 	},
 	"capabilities": {
-		"system": ["raw-client"],
-		"storage": ["own-collection"],
+		"system": [
+			"raw-client"
+		],
+		"storage": [
+			"own-collection"
+		],
 		"discord": [
 			"BanMembers",
 			"KickMembers",
@@ -26,11 +30,17 @@
 			"SendMessages",
 			"GuildInfo"
 		],
-		"hooks": ["subscribe"]
+		"hooks": [
+			"subscribe"
+		]
 	},
 	"permissions": {
-		"system": ["raw-client"],
-		"storage": ["own-collection"],
+		"system": [
+			"raw-client"
+		],
+		"storage": [
+			"own-collection"
+		],
 		"discord": [
 			"BanMembers",
 			"KickMembers",
@@ -40,11 +50,55 @@
 			"SendMessages",
 			"GuildInfo"
 		],
-		"hooks": ["subscribe"],
-		"network": { "outbound": [] },
-		"filesystem": { "read": [], "write": [] },
+		"hooks": [
+			"subscribe"
+		],
+		"network": {
+			"outbound": []
+		},
+		"filesystem": {
+			"read": [],
+			"write": []
+		},
 		"childProcess": false,
 		"nativeAddons": false
+	},
+	"engines": {
+		"core": ">=2.0.0",
+		"plugins": {
+			"administration": ">=2.0.0"
+		}
+	},
+	"settings": {
+		"commandPermissions": true,
+		"schema": [
+			{
+				"key": "log_channel_id",
+				"type": "channel",
+				"label": "Mod log channel"
+			},
+			{
+				"key": "ticket_category_id",
+				"type": "string",
+				"label": "Ticket category ID"
+			},
+			{
+				"key": "ticket_support_role_id",
+				"type": "role",
+				"label": "Ticket support role"
+			},
+			{
+				"key": "ticket_log_channel_id",
+				"type": "channel",
+				"label": "Ticket log channel"
+			},
+			{
+				"key": "dm_on_action",
+				"type": "boolean",
+				"label": "DM user on mod action",
+				"default": true
+			}
+		]
 	},
 	"declaredDependencies": [],
 	"discordPermissions": [
@@ -57,20 +111,45 @@
 	"configSchema": {
 		"type": "object",
 		"properties": {
-			"log_channel_id": { "type": "string", "default": null },
-			"ticket_category_id": { "type": "string", "default": null },
-			"ticket_support_role_id": { "type": "string", "default": null },
-			"ticket_log_channel_id": { "type": "string", "default": null },
+			"log_channel_id": {
+				"type": "string",
+				"default": null
+			},
+			"ticket_category_id": {
+				"type": "string",
+				"default": null
+			},
+			"ticket_support_role_id": {
+				"type": "string",
+				"default": null
+			},
+			"ticket_log_channel_id": {
+				"type": "string",
+				"default": null
+			},
 			"warn_thresholds": {
 				"type": "object",
 				"default": {
-					"3": { "action": "timeout", "duration": "1h" },
-					"5": { "action": "timeout", "duration": "24h" },
-					"7": { "action": "kick" },
-					"10": { "action": "ban" }
+					"3": {
+						"action": "timeout",
+						"duration": "1h"
+					},
+					"5": {
+						"action": "timeout",
+						"duration": "24h"
+					},
+					"7": {
+						"action": "kick"
+					},
+					"10": {
+						"action": "ban"
+					}
 				}
 			},
-			"dm_on_action": { "type": "boolean", "default": true }
+			"dm_on_action": {
+				"type": "boolean",
+				"default": true
+			}
 		}
 	}
 }
