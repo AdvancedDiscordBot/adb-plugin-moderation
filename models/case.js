@@ -11,6 +11,9 @@ const CaseSchema = new Schema({
     required: true,
   },
   targetUserId: { type: String, required: true },
+  // Same value as targetUserId; duplicated so the platform's member-scope
+  // query ({guildId, userId}) can find a member's own cases.
+  userId: { type: String, default: null, index: true },
   moderatorId: { type: String, required: true },
   reason: { type: String, default: "No reason provided" },
   duration: { type: String, default: null },

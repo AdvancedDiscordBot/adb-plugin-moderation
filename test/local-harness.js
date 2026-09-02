@@ -1,6 +1,6 @@
 "use strict";
 
-const { createMockCtx } = require("./mock-ctx");
+const { createMockCtx, buildInteraction, buildOptions } = require("./mock-ctx");
 const { load } = require("../index");
 const { parseDuration } = require("../lib/parseDuration");
 
@@ -85,6 +85,44 @@ async function run() {
     ctx.hooks._handlers["onPluginUnload"] && ctx.hooks._handlers["onPluginUnload"].length > 0,
     "onPluginUnload hook registered"
   );
+
+  // -------------------------------------------------------
+  // 6. Member-scope identity fields: warn/note must set BOTH
+  //    targetUserId and userId to the target's ID (platform
+  //    member pages query {guildId, userId}).
+  // -------------------------------------------------------
+  console.log("\n-- member-scope identity fields --");
+  const targetUser = { id: "target-user-42", tag: "Target#0001", displayAvatarURL: () => "" };
+  const getCmd = (name) => (ctx._commands || []).find((c) => c.data.name === name);
+
+  try {
+    const warnInt = buildInteraction();
+    warnInt.options = buildOptions({ user: targetUser, reason: "spam" });
+    await getCmd("warn").execute(warnInt);
+    const warnCase = ctx._models.Case._docs.find((d) => d.type === "warn");
+    assert(warnCase, "warn created a Case");
+    assert(warnCase && warnCase.targetUserId === "target-user-42", "warn Case targetUserId === target ID");
+    assert(warnCase && warnCase.userId === "target-user-42", "warn Case userId === target ID");
+  } catch (err) {
+    assert(false, `warn execute threw: ${err.message}`);
+    console.error(err);
+  }
+
+  try {
+    const noteInt = buildInteraction();
+    noteInt.options = buildOptions({ user: targetUser, text: "watch this one" });
+    await getCmd("note").execute(noteInt);
+    const noteCase = ctx._models.Case._docs.find((d) => d.type === "note");
+    assert(noteCase, "note created a Case");
+    assert(noteCase && noteCase.targetUserId === "target-user-42", "note Case targetUserId === target ID");
+    assert(noteCase && noteCase.userId === "target-user-42", "note Case userId === target ID");
+    const noteDoc = ctx._models.Note._docs[0];
+    assert(noteDoc, "note created a Note document");
+    assert(noteDoc && noteDoc.userId === "target-user-42", "note Note userId === target ID");
+  } catch (err) {
+    assert(false, `note execute threw: ${err.message}`);
+    console.error(err);
+  }
 
   // -------------------------------------------------------
   // Summary

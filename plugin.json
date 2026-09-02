@@ -1,7 +1,7 @@
 {
 	"name": "adb-plugin-moderation",
 	"displayName": "Basic Moderation",
-	"version": "1.2.0",
+	"version": "1.3.0",
 	"description": "Core moderation commands: ban, kick, timeout, warn, purge, tickets, and case logging.",
 	"author": "DeadIndian",
 	"main": "index.js",
@@ -108,6 +108,43 @@
 		"ManageMessages",
 		"ManageChannels"
 	],
+	"webUi": {
+		"memberPages": [
+			{
+				"path": "/me/mod-record",
+				"label": "My Mod Record",
+				"icon": "Shield",
+				"source": { "model": "Case", "scope": "member", "sort": { "createdAt": -1 }, "limit": 100 },
+				"view": {
+					"type": "table",
+					"empty": "You have a clean record in this server.",
+					"columns": [
+						{ "field": "caseNumber", "label": "Case" },
+						{ "field": "type", "label": "Type" },
+						{ "field": "reason", "label": "Reason" },
+						{ "field": "active", "label": "Active" },
+						{ "field": "createdAt", "label": "Date" }
+					]
+				}
+			},
+			{
+				"path": "/me/tickets",
+				"label": "My Tickets",
+				"icon": "LifeBuoy",
+				"source": { "model": "Ticket", "scope": "member", "sort": { "createdAt": -1 }, "limit": 50 },
+				"view": {
+					"type": "table",
+					"empty": "You have no tickets in this server.",
+					"columns": [
+						{ "field": "reason", "label": "Reason" },
+						{ "field": "status", "label": "Status" },
+						{ "field": "createdAt", "label": "Opened" },
+						{ "field": "closedAt", "label": "Closed" }
+					]
+				}
+			}
+		]
+	},
 	"configSchema": {
 		"type": "object",
 		"properties": {
