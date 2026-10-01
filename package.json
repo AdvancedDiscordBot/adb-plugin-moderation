@@ -1,6 +1,6 @@
 {
   "name": "adb-plugin-moderation",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Core moderation commands for Advanced Discord Bot",
   "main": "index.js",
   "files": [
