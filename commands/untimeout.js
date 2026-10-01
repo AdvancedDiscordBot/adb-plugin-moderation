@@ -1,7 +1,7 @@
 "use strict";
 
 const { EmbedBuilder, PermissionFlagsBits } = require("discord.js");
-const { requirePerms } = require("../lib/permissions");
+const { requirePerms, requireHierarchy } = require("../lib/permissions");
 const { createCase, postCaseLog } = require("../lib/logCase");
 
 module.exports = {
@@ -32,6 +32,12 @@ module.exports = {
       return interaction.reply({ embeds: [embed], ephemeral: true });
     }
 
+    if (!await requireHierarchy(interaction, member)) return;
+    if (!member.moderatable) {
+      const embed = new EmbedBuilder().setColor(0xe74c3c).setDescription("I cannot remove that member's timeout (insufficient permissions or role hierarchy).");
+      return interaction.reply({ embeds: [embed], ephemeral: true });
+    }
+
     try {
       await member.timeout(null, reason);
     } catch (err) {
@@ -39,7 +45,7 @@ module.exports = {
       return interaction.reply({ embeds: [embed], ephemeral: true });
     }
 
-    const caseDoc = await createCase(CaseModel, {
+    const caseDoc = await createCase(CaseModel, ctx.models.CaseCounter, {
       guildId,
       type: "untimeout",
       targetId: targetUser.id,

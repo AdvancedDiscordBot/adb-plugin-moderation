@@ -5,94 +5,77 @@
  * Mirrors the ADB ctx API contract without requiring a running bot or DB.
  */
 
-const { Schema } = require("mongoose");
 const mongoose = require("mongoose");
+const { PermissionsBitField } = require("discord.js");
 
 // Minimal in-memory model factory — wraps a mongoose schema with array-backed persistence
 function createInMemoryModel(name, schema) {
   const docs = [];
-  let idCounter = 1;
+  const FakeDoc = new mongoose.Mongoose().model(name, schema);
 
-  class FakeDoc {
-    constructor(data) {
-      Object.assign(this, data);
-      if (!this._id) this._id = String(idCounter++);
-    }
-    async save() {
-      const existing = docs.findIndex((d) => d._id === this._id);
-      if (existing >= 0) {
-        docs[existing] = this;
-      } else {
-        docs.push(this);
+  function persist(doc) {
+    const error = doc.validateSync();
+    if (error) throw error;
+    for (const [keys, options] of schema.indexes()) {
+      if (options.unique && docs.some((other) => String(other._id) !== String(doc._id) &&
+        Object.keys(keys).every((key) => other[key] === doc[key]))) {
+        throw Object.assign(new Error("Duplicate key"), { code: 11000 });
       }
-      return this;
     }
-    toObject() {
-      return { ...this };
-    }
+    const existing = docs.findIndex((d) => String(d._id) === String(doc._id));
+    const data = doc.toObject();
+    if (existing >= 0) docs[existing] = data;
+    else docs.push(data);
   }
+  FakeDoc.prototype.save = async function () {
+    await this.validate();
+    persist(this);
+    return this;
+  };
 
-  FakeDoc.find = function (query = {}) {
-    let results = docs.filter((d) => matchQuery(d, query));
+  function queryBuilder(query, single = false) {
+    let sort = null;
+    let limit = null;
+    let lean = false;
     const chain = {
-      sort(by) {
-        const [key, dir] = Object.entries(by)[0];
-        results.sort((a, b) => {
-          const av = new Date(a[key]).getTime();
-          const bv = new Date(b[key]).getTime();
-          return dir === -1 ? bv - av : av - bv;
-        });
-        return chain;
-      },
-      limit(n) {
-        results = results.slice(0, n);
-        return chain;
-      },
+      sort(by) { sort = by; return chain; },
+      limit(n) { limit = n; return chain; },
       select() { return chain; },
-      lean() { return Promise.resolve(results.map((d) => ({ ...d }))); },
-      then(resolve) { return Promise.resolve(results.map((d) => ({ ...d }))).then(resolve); },
-    };
-    return chain;
-  };
-
-  FakeDoc.findOne = function (query = {}) {
-    const result = docs.find((d) => matchQuery(d, query));
-    const chain = {
-      sort(by) {
-        const matched = docs.filter((d) => matchQuery(d, query));
-        const [key, dir] = Object.entries(by)[0];
-        matched.sort((a, b) => {
-          const av = typeof a[key] === "number" ? a[key] : new Date(a[key]).getTime();
-          const bv = typeof b[key] === "number" ? b[key] : new Date(b[key]).getTime();
-          return dir === -1 ? bv - av : av - bv;
-        });
-        const found = matched[0] || null;
-        return {
-          select() { return { lean: () => Promise.resolve(found ? { ...found } : null) }; },
-          lean() { return Promise.resolve(found ? { ...found } : null); },
-          then(resolve) { return Promise.resolve(found ? { ...found } : null).then(resolve); },
-        };
+      lean() { lean = true; return chain; },
+      then(resolve, reject) {
+        return Promise.resolve().then(() => {
+          let results = docs.filter((d) => matchQuery(d, query));
+          if (sort) {
+            const [key, direction] = Object.entries(sort)[0];
+            results.sort((a, b) => (a[key] > b[key] ? 1 : a[key] < b[key] ? -1 : 0) * direction);
+          }
+          if (limit !== null) results = results.slice(0, limit);
+          results = results.map((d) => lean ? new FakeDoc(d).toObject() : new FakeDoc(d));
+          return single ? results[0] || null : results;
+        }).then(resolve, reject);
       },
-      select() { return { lean: () => Promise.resolve(result ? { ...result } : null) }; },
-      lean() { return Promise.resolve(result ? { ...result } : null); },
-      then(resolve) { return Promise.resolve(result ? { ...result } : null).then(resolve); },
+      catch(reject) { return chain.then((value) => value, reject); },
     };
     return chain;
-  };
+  }
+  FakeDoc.find = (query = {}) => queryBuilder(query);
+  FakeDoc.findOne = (query = {}) => queryBuilder(query, true);
 
-  FakeDoc.findOneAndUpdate = async function (query, update, opts) {
-    const doc = docs.find((d) => matchQuery(d, query));
-    if (doc) {
-      Object.assign(doc, update.$set || update);
-      return { ...doc };
-    }
-    if (opts && opts.upsert) {
-      const newDoc = new FakeDoc({ ...query, ...(update.$set || update) });
-      await newDoc.save();
-      return { ...newDoc };
-    }
-    return null;
+  FakeDoc.findOneAndUpdate = async function (query, update, opts = {}) {
+    const previous = docs.find((d) => matchQuery(d, query));
+    if (!previous && !opts.upsert) return null;
+    const doc = new FakeDoc(previous || { ...query, ...update.$setOnInsert });
+    if (update.$set) doc.set(update.$set);
+    if (update.$inc) for (const [key, value] of Object.entries(update.$inc)) doc[key] = (doc[key] || 0) + value;
+    for (const [key, value] of Object.entries(update)) if (!key.startsWith("$")) doc[key] = value;
+    persist(doc); // An atomic update does not yield between reading and writing.
+    return opts.new ? doc : previous ? new FakeDoc(previous) : null;
   };
+  FakeDoc.updateOne = async (query, update, opts = {}) => {
+    const doc = await FakeDoc.findOneAndUpdate(query, update, { ...opts, new: true });
+    return { acknowledged: true, matchedCount: doc ? 1 : 0, modifiedCount: doc ? 1 : 0 };
+  };
+  FakeDoc.create = async (data) => new FakeDoc(data).save();
 
   FakeDoc.deleteMany = async function (query) {
     const before = docs.length;
@@ -119,7 +102,7 @@ function matchQuery(doc, query) {
       if ("$gte" in val && doc[key] < val.$gte) return false;
       if ("$lte" in val && doc[key] > val.$lte) return false;
       if ("$in" in val && !val.$in.includes(doc[key])) return false;
-    } else if (doc[key] !== val) {
+    } else if (key === "_id" ? String(doc[key]) !== String(val) : doc[key] !== val) {
       return false;
     }
   }
@@ -145,21 +128,28 @@ function buildOptions(data = {}) {
 // Fake interaction
 function buildInteraction(overrides = {}) {
   const guildId = overrides.guildId || "test-guild-123";
-  return {
+  const replies = [];
+  const role = (position) => ({ position, comparePositionTo(other) { return position - other.position; } });
+  const interaction = {
+    guildId,
+    channelId: "test-channel-id",
     guild: {
       id: guildId,
       name: "Test Server",
+      ownerId: "owner-id",
       roles: { everyone: { id: "everyone-role" } },
       members: {
+        me: { id: "bot-id", permissions: new PermissionsBitField(PermissionsBitField.All), roles: { highest: role(100) } },
         fetch: async (id) => ({
           id,
+          roles: { highest: role(10) },
           kickable: true,
           bannable: true,
           moderatable: true,
           kick: async () => {},
           timeout: async () => {},
           ban: async () => {},
-          permissions: { has: () => true },
+          permissions: new PermissionsBitField(),
         }),
         ban: async () => {},
       },
@@ -176,11 +166,28 @@ function buildInteraction(overrides = {}) {
       permissionOverwrites: { edit: async () => {}, delete: async () => {} },
     },
     user: { id: "mod-user-id", tag: "Moderator#0001", displayAvatarURL: () => "" },
-    member: { permissions: { has: () => true } },
+    member: { permissions: new PermissionsBitField(PermissionsBitField.All), roles: { highest: role(50) } },
+    memberPermissions: new PermissionsBitField(PermissionsBitField.All),
     options: buildOptions(overrides.options || {}),
-    reply: async (data) => { /* no-op */ },
+    deferred: false,
+    replied: false,
+    replies,
+    reply: async (data) => {
+      if (interaction.deferred || interaction.replied) throw new Error("Interaction already acknowledged");
+      interaction.replied = true;
+      replies.push(data);
+    },
+    deferReply: async () => {
+      if (interaction.deferred || interaction.replied) throw new Error("Interaction already acknowledged");
+      interaction.deferred = true;
+    },
+    editReply: async (data) => {
+      if (!interaction.deferred && !interaction.replied) throw new Error("Interaction not acknowledged");
+      replies.push(data);
+    },
     ...overrides,
   };
+  return interaction;
 }
 
 function createMockCtx() {
@@ -196,6 +203,7 @@ function createMockCtx() {
     _models,
     _commands,
     _events,
+    models: null,
 
     client: {
       user: { id: "bot-id", tag: "Bot#0000" },
@@ -212,6 +220,7 @@ function createMockCtx() {
     },
 
     defineModel(name, schema) {
+      if (_models[name]) return _models[name];
       const model = createInMemoryModel(name, schema);
       _models[name] = model;
       return model;
@@ -232,20 +241,20 @@ function createMockCtx() {
       async getPluginConfig(guildId, pluginName) {
         const key = `${guildId}:${pluginName}`;
         if (!this.pluginConfigs.has(key)) this.pluginConfigs.set(key, { data: {} });
-        return this.pluginConfigs.get(key);
+        return structuredClone(this.pluginConfigs.get(key));
       },
 
       async updatePluginConfig(guildId, pluginName, data) {
         const key = `${guildId}:${pluginName}`;
-        const cfg = this.pluginConfigs.get(key) || { data: {} };
-        Object.assign(cfg.data, data);
+        const cfg = structuredClone({ guildId, pluginName, data });
         this.pluginConfigs.set(key, cfg);
+        return cfg;
       },
 
       async getUserProfile(userId, guildId) {
         const key = `${userId}:${guildId}`;
         if (!this.userProfiles.has(key)) this.userProfiles.set(key, { warnings: 0, bans: 0, kicks: 0 });
-        return this.userProfiles.get(key);
+        return structuredClone(this.userProfiles.get(key));
       },
 
       async updateUserProfile(userId, guildId, data) {
@@ -273,9 +282,10 @@ function createMockCtx() {
     },
   };
 
-  // Core (PluginContext.build) freezes the ctx it hands plugins. Mirror that so
-  // the harness catches any plugin that tries to mutate ctx (e.g. `ctx.models = …`).
-  return Object.freeze(ctx);
+  for (const key of Object.keys(ctx)) {
+    Object.defineProperty(ctx, key, { writable: key === "models", configurable: false });
+  }
+  return Object.preventExtensions(ctx);
 }
 
 module.exports = { createMockCtx, buildInteraction, buildOptions };

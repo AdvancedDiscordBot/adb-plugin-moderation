@@ -1,7 +1,7 @@
 "use strict";
 
 const { EmbedBuilder, PermissionFlagsBits } = require("discord.js");
-const { requirePerms } = require("../lib/permissions");
+const { requirePerms, requireHierarchy } = require("../lib/permissions");
 const { dmActionUser } = require("../lib/dmUser");
 const { createCase, postCaseLog } = require("../lib/logCase");
 
@@ -33,6 +33,7 @@ module.exports = {
       return interaction.reply({ embeds: [embed], ephemeral: true });
     }
 
+    if (!await requireHierarchy(interaction, member)) return;
     if (!member.kickable) {
       const embed = new EmbedBuilder()
         .setColor(0xe74c3c)
@@ -55,7 +56,7 @@ module.exports = {
       return interaction.reply({ embeds: [embed], ephemeral: true });
     }
 
-    const caseDoc = await createCase(CaseModel, {
+    const caseDoc = await createCase(CaseModel, ctx.models.CaseCounter, {
       guildId,
       type: "kick",
       targetId: targetUser.id,

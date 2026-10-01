@@ -2,6 +2,7 @@
 
 const { EmbedBuilder, PermissionFlagsBits } = require("discord.js");
 const { requirePerms } = require("../lib/permissions");
+const { ensureCaseCounter } = require("../lib/logCase");
 
 module.exports = {
   data: {
@@ -19,6 +20,7 @@ module.exports = {
     const guildId = interaction.guild.id;
     const CaseModel = ctx.models.Case;
 
+    await ensureCaseCounter(CaseModel, ctx.models.CaseCounter, guildId);
     const result = await CaseModel.deleteMany({ guildId, targetUserId: targetUser.id, type: "warn" });
     await ctx.db.updateUserProfile(targetUser.id, guildId, { warnings: 0 });
 
@@ -30,6 +32,6 @@ module.exports = {
       )
       .setTimestamp();
 
-    await interaction.reply({ embeds: [embed], ephemeral: true });
+    await interaction.editReply({ embeds: [embed] });
   },
 };

@@ -36,7 +36,7 @@ module.exports = {
                 (c) =>
                   `**[#${c.caseNumber}] ${c.type.toUpperCase()}** — <t:${Math.floor(new Date(c.createdAt).getTime() / 1000)}:R>\n${c.reason}`
               )
-              .join("\n\n")
+              .join("\n\n").slice(0, 4096)
       )
       .setFooter({ text: `Showing up to 20 most recent cases` })
       .setTimestamp();

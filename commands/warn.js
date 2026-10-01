@@ -1,7 +1,7 @@
 "use strict";
 
 const { EmbedBuilder, PermissionFlagsBits } = require("discord.js");
-const { requirePerms } = require("../lib/permissions");
+const { requirePerms, requireHierarchy } = require("../lib/permissions");
 const { dmActionUser } = require("../lib/dmUser");
 const { createCase, postCaseLog } = require("../lib/logCase");
 const { checkWarnThresholds } = require("../lib/checkThresholds");
@@ -26,7 +26,17 @@ module.exports = {
     const CaseModel = ctx.models.Case;
     const configData = (await ctx.db.getPluginConfig(guildId, "adb-plugin-moderation"))?.data || {};
 
-    const caseDoc = await createCase(CaseModel, {
+		let member;
+		try {
+			member = await interaction.guild.members.fetch(targetUser.id);
+		} catch (err) {
+			if (err.code !== 10007) {
+				return interaction.editReply({ content: `Could not verify member hierarchy: ${err.message}` });
+			}
+		}
+		if (!await requireHierarchy(interaction, member || targetUser)) return;
+
+    const caseDoc = await createCase(CaseModel, ctx.models.CaseCounter, {
       guildId,
       type: "warn",
       targetId: targetUser.id,
@@ -55,11 +65,11 @@ module.exports = {
       .addFields(
         { name: "User", value: `${targetUser.tag} (${targetUser.id})`, inline: true },
         { name: "Total Warnings", value: String(newWarnings), inline: true },
-        { name: "Reason", value: reason }
+        { name: "Reason", value: reason.slice(0, 1024) }
       )
       .setTimestamp();
 
-    await interaction.reply({ embeds: [embed], ephemeral: true });
+    await interaction.editReply({ embeds: [embed] });
 
     // Check thresholds AFTER replying so auto-actions don't block the response
     await checkWarnThresholds(

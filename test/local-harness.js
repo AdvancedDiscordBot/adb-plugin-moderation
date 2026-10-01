@@ -124,6 +124,10 @@ async function run() {
     console.error(err);
   }
 
+  const regressions = await require("./regressions")();
+  passed += regressions.passed;
+  failed += regressions.failed;
+
   // -------------------------------------------------------
   // Summary
   // -------------------------------------------------------

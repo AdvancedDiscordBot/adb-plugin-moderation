@@ -34,7 +34,7 @@ module.exports = {
     });
     await noteDoc.save();
 
-    const caseDoc = await createCase(CaseModel, {
+    const caseDoc = await createCase(CaseModel, ctx.models.CaseCounter, {
       guildId,
       type: "note",
       targetId: targetUser.id,
@@ -49,7 +49,7 @@ module.exports = {
       .setTitle(`Note Added — Case #${caseDoc.caseNumber}`)
       .addFields(
         { name: "User", value: `${targetUser.tag} (${targetUser.id})`, inline: true },
-        { name: "Note", value: text }
+        { name: "Note", value: text.slice(0, 1024) }
       )
       .setTimestamp();
 

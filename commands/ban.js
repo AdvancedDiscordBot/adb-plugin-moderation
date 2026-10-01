@@ -1,7 +1,7 @@
 "use strict";
 
 const { EmbedBuilder, PermissionFlagsBits } = require("discord.js");
-const { requirePerms } = require("../lib/permissions");
+const { requirePerms, requireHierarchy } = require("../lib/permissions");
 const { dmActionUser } = require("../lib/dmUser");
 const { createCase, postCaseLog } = require("../lib/logCase");
 
@@ -37,10 +37,14 @@ module.exports = {
     let member;
     try {
       member = await interaction.guild.members.fetch(targetUser.id);
-    } catch {
-      // User not in guild — still attempt ban
+    } catch (err) {
+      if (err.code !== 10007) {
+        const embed = new EmbedBuilder().setColor(0xe74c3c).setDescription(`Could not verify member hierarchy: ${err.message}`);
+        return interaction.reply({ embeds: [embed], ephemeral: true });
+      }
     }
 
+    if (!await requireHierarchy(interaction, member || targetUser)) return;
     if (member && !member.bannable) {
       const embed = new EmbedBuilder()
         .setColor(0xe74c3c)
@@ -66,7 +70,7 @@ module.exports = {
       return interaction.reply({ embeds: [embed], ephemeral: true });
     }
 
-    const caseDoc = await createCase(CaseModel, {
+    const caseDoc = await createCase(CaseModel, ctx.models.CaseCounter, {
       guildId,
       type: "ban",
       targetId: targetUser.id,

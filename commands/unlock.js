@@ -16,6 +16,9 @@ module.exports = {
     if (!requirePerms(interaction, PermissionFlagsBits.ManageChannels)) return;
 
     const target = interaction.options.getChannel("channel") || interaction.channel;
+    if (!target.permissionsFor(interaction.user.id)?.has(PermissionFlagsBits.ManageChannels)) {
+      return interaction.reply({ content: "You need Manage Channels permission in the selected channel.", ephemeral: true });
+    }
 
     try {
       await target.permissionOverwrites.edit(interaction.guild.roles.everyone, {

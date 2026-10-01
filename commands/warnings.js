@@ -35,7 +35,7 @@ module.exports = {
                 (w) =>
                   `**Case #${w.caseNumber}** — <t:${Math.floor(new Date(w.createdAt).getTime() / 1000)}:R>\n${w.reason}`
               )
-              .join("\n\n")
+              .join("\n\n").slice(0, 4096)
       )
       .setFooter({ text: `Total: ${warns.length} warning(s)` })
       .setTimestamp();

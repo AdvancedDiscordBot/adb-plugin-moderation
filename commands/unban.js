@@ -18,6 +18,9 @@ module.exports = {
     if (!requirePerms(interaction, PermissionFlagsBits.BanMembers)) return;
 
     const userId = interaction.options.getString("user_id");
+    if (!/^[1-9]\d{0,19}$/.test(userId) || BigInt(userId) > 18446744073709551615n) {
+      return interaction.reply({ content: "Provide a valid Discord user ID.", ephemeral: true });
+    }
     const reason = interaction.options.getString("reason") || "No reason provided";
     const guildId = interaction.guild.id;
 
@@ -38,7 +41,7 @@ module.exports = {
       return interaction.reply({ embeds: [embed], ephemeral: true });
     }
 
-    const caseDoc = await createCase(CaseModel, {
+    const caseDoc = await createCase(CaseModel, ctx.models.CaseCounter, {
       guildId,
       type: "unban",
       targetId: userId,

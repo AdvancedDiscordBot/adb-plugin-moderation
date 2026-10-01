@@ -50,7 +50,7 @@ module.exports = {
       .addFields(
         { name: "Target", value: targetUser ? `${targetUser.tag} (${caseDoc.targetUserId})` : caseDoc.targetUserId, inline: true },
         { name: "Moderator", value: moderator ? `${moderator.tag} (${caseDoc.moderatorId})` : caseDoc.moderatorId, inline: true },
-        { name: "Reason", value: caseDoc.reason || "No reason provided" }
+        { name: "Reason", value: (caseDoc.reason || "No reason provided").slice(0, 1024) }
       )
       .setTimestamp(caseDoc.createdAt);
 
