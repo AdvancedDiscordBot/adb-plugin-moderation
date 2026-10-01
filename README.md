@@ -23,7 +23,8 @@ All actions create a numbered case and optionally post an embed to a log channel
   - Moderate Members (timeout)
   - Manage Messages (warn, purge, note)
   - Manage Channels (slowmode, lock, ticket channels)
-  - Manage Guild (clearwarnings, modstats, ticket setup)
+  - Manage Roles (channel permission overwrites for locks and tickets)
+  - View Channel, Send Messages, Embed Links, Read Message History (logs, purge, tickets)
 
 ## Installation
 
@@ -96,6 +97,18 @@ Run `/ticket setup` in your server to configure tickets. All other settings go i
 | `/ticket close` | Manage Channels | Close and archive a ticket |
 | `/ticket add` | Manage Channels | Add a user to a ticket |
 | `/ticket remove` | Manage Channels | Remove a user from a ticket |
+
+Member actions also enforce the invoking moderator's role hierarchy, independently
+of the bot's hierarchy. The server owner bypasses only the caller-side role check.
+Case numbers use a persistent per-guild counter seeded from existing cases and are
+not reused when warnings are cleared. Existing duplicate historical case numbers
+are not rewritten.
+
+Ticket setup preserves other moderation settings. Only open ticket channels can
+be changed by ticket commands. Removing access explicitly denies View Channel
+(Discord administrators still bypass overwrites). Ticket closure is saved only
+after Discord confirms channel deletion; failed deletion leaves the ticket open
+for retry. Deleted stale ticket channels no longer prevent opening a new ticket.
 
 ## Testing
 
